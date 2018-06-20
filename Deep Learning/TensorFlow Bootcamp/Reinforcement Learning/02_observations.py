@@ -1,4 +1,5 @@
-""" The environment step() function we saw earlier returns back useful objects for our agent.
+"""
+The environment step() function we saw earlier returns back useful objects for our agent.
 - Observation: Environment specific information
 - Reward: Amount of reward achieved by the previous action. Scaled varies off environmentself.
 - Done: Boolean indicating whether environment needs to be reset (game lost).
