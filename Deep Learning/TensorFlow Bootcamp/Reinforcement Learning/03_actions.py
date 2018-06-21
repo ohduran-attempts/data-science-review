@@ -7,8 +7,11 @@ env = gym.make('CartPole-v0')
 # print(env.observation_space) # Box(4,), - that is, the total observations returned are 4.
 
 observation = env.reset()
+done = False
+t = 0
+max_t = 1000
 
-for t in range(1000):
+while t < max_t:
     env.render()
 
     cart_pos, cart_vel, pole_ang, ang_vel = observation
@@ -22,3 +25,5 @@ for t in range(1000):
 
     # feed the action to the environment and see what comes back.
     observation, reward, done, info = env.step(action)
+
+    t += 1
