@@ -54,3 +54,4 @@ with tf.Session() as sess:
                 print('Done after', step, 'steps')
                 break
 print('after', epi, 'episodes, the average steps per game was', np.mean(avg_steps))
+env.close()
