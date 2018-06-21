@@ -2,18 +2,14 @@ import gym
 import tensorflow as tf
 import numpy as np
 
-
+init =tf.global_variables_initializer()
 env = gym.make('CartPole-v0')
 
 observations = env.reset()
-
-env = gym.make('CartPole-v0')
-
-observations = env.reset()
-
-saver = tf.train.Saver()
 
 with tf.Session() as sess:
+    sess.run(init)
+    saver = tf.train.Saver()
     saver.restore(sess, "./tmp/model.ckpt")
     print("Model restored.")
 
