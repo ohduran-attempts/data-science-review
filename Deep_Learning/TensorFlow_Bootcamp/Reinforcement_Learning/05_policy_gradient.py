@@ -153,8 +153,8 @@ with tf.Session() as sess:
 
         print('Saving graph and session')
 
-        meta_graph_def = tf.train.export_meta_graph(filename='./my_policy_model.meta')
-        saver.save(sess, 'models/my_policy_model') # Save each time in case there is a crash
+        save_path = saver.save(sess, "./tmp/model.ckpt")
+        print("Model saved in file: {}".format(save_path))
 
 
 ##############################
@@ -168,8 +168,8 @@ env = gym.make('CartPole-v0')
 observations = env.reset()
 
 with tf.Session() as sess:
-    new_saver = tf.train.import_meta_graph('./my_policy_model.meta')
-    new_saver.restore(sess,'./my_policy_model.meta')
+    saver.restore(sess, "./tmp/model.ckpt")
+    print("Model restored.")
 
     for x in range(500):
         env.render()
