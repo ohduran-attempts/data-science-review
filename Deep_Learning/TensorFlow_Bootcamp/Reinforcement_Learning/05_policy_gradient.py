@@ -9,8 +9,7 @@ Which actions should be credited when the agent gets rewarded at time t, only ac
 We solve this problem by applying a discount rate. We evaluate an action based off all the rewards that come after the action,
 not just the immediate first reward.
 
-We choose a discount rate D, typically 0.95 to 0.99:
-Score :R(0) + R(1) * D + R(2)*D² ... = sum(R(n)*D^n)
+We choose a discount rate D, typically 0.95 to 0.99, applied to each step n times, in reverse.
 
 The closer D is to 1, the more weight future rewards have. Closer to 0, future rewards don't count as much as immediate rewards.
 Choosing a discount rate often depends on the specific environment and whether actions have short or long term effects.
@@ -40,18 +39,18 @@ num_outputs = 1
 
 learning_rate = 0.01
 
-initialize = tf.contrib.layers.variance_scaling_initializer()
+initializer = tf.contrib.layers.variance_scaling_initializer()
 
 X = tf.placeholder(tf.float32, shape=[None, num_inputs])
 hidden_layer =tf.layers.dense(X, num_hidden, activation=tf.nn.relu, kernel_initializer=initializer)
 
-logit = tf.layers.dense(hidden_layer, num_outputs)
+logits = tf.layers.dense(hidden_layer, num_outputs)
 outputs = tf.nn.sigmoid(logits)
 
 probabilities = tf.concat(axis=1, values = [outputs, 1 - outputs])
 actions = tf.multinomial(probabilities, num_samples=1)
 
-y = 1.0 - tf.to_float(action)
+y = 1.0 - tf.to_float(actions)
 
 # gradients off cross_entropy
 cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=y, logits=logits)
@@ -69,12 +68,14 @@ for gradient, variable in gradients_and_variables:
     gradients.append(gradient)
     gradient_placeholder = tf.placeholder(tf.float32, shape=gradient.get_shape())
     gradient_placeholders.append(gradient_placeholder)
-    grads_and_vars_feed.append(gradient_placeholder, variable)
+    grads_and_vars_feed.append((gradient_placeholder, variable))
 
-training_optimizer = optimizer.apply_gradients(grads_and_vars_feed)
+training_op = optimizer.apply_gradients(grads_and_vars_feed)
+
+
 
 init =tf.global_variables_initializer()
-saver = tf.saver.Saver()
+saver = tf.train.Saver()
 
 def helper_discount_reward(rewards, discount_rate):
     """"Takes in rewards and applies discount rate."""
@@ -82,15 +83,95 @@ def helper_discount_reward(rewards, discount_rate):
     cumulative_rewards = 0
     for step in reversed(range(len(rewards))):
         cumulative_rewards = rewards[step] + cumulative_rewards*discount_rate
-        discounter_rewards[step] = cumulative_rewards
+        discounted_rewards[step] = cumulative_rewards
     return discounted_rewards
 
-def discount_and_normalize_rewards(all_rewards, discount_rate):
+def discount_and_normalize_reward(all_rewards, discount_rate):
     """Takes in all rewards, applies helper_discount function and then normalizes using mean and std."""
-    all_discounted_rewards = [helper_discount_rewards(rewards, discount_rate) for rewards in all_rewards]
+    all_discounted_rewards = [helper_discount_reward(rewards, discount_rate) for rewards in all_rewards]
 
     flat_rewards = np.concatenate(all_discounted_rewards)
     reward_mean = flat_rewards.mean()
     reward_std = flat_rewards.std()
 
-    return [(d_w - reward_mean) / reward_std for d_w in all_discounted_rewards]
+    return [(d_w - reward_mean) / reward_std for d_w in all_discounted_rewards
+
+    ]
+
+
+# Session
+env = gym.make('CartPole-v0')
+
+num_game_rounds = 10
+max_game_steps = 1000
+num_iterations = 650
+
+discount_rate = 0.9
+
+with tf.Session() as sess:
+
+    sess.run(init)
+
+    for iteration in range(num_iterations):
+        print('On iteration: {}'.format(iteration))
+
+        all_rewards = []
+        all_gradients = []
+
+        for game in range(num_game_rounds):
+
+            current_rewards = []
+            current_gradients = []
+
+            observations = env.reset()
+
+            for step in range(max_game_steps):
+
+                action_val, gradients_val = sess.run([actions, gradients], feed_dict={X:observations.reshape(1, num_inputs)})
+
+                observations, reward, done, info = env.step(action_val[0][0])
+
+                current_rewards.append(reward)
+                current_gradients.append(gradients_val)
+
+                if done:
+                    break
+
+            all_rewards.append(current_rewards)
+            all_gradients.append(current_gradients)
+
+        all_rewards = discount_and_normalize_reward(all_rewards, discount_rate)
+        feed_dict = {}
+
+        for var_index, gradient_placeholder in enumerate(gradient_placeholders):
+            mean_gradients = np.mean([reward * all_gradients[game_index][step][var_index]
+                                                                    for game_index, rewards in enumerate(all_rewards)
+                                                                    for step, reward in enumerate(rewards)], axis=0)
+            feed_dict[gradient_placeholder] = mean_gradients
+
+        sess.run(training_op, feed_dict=feed_dict)
+
+        print('Saving graph and session')
+
+        meta_graph_def = tf.train.export_meta_graph(filename='./my_policy_model.meta')
+        saver.save(sess, 'models/my_policy_model') # Save each time in case there is a crash
+
+
+##############################
+
+### Run trained Model On Environment ##
+
+##############################
+
+env = gym.make('CartPole-v0')
+
+observations = env.reset()
+
+with tf.Session() as sess:
+    new_saver = tf.train.import_meta_graph('./my_policy_model.meta')
+    new_saver.restore(sess,'./my_policy_model.meta')
+
+    for x in range(500):
+        env.render()
+        action_val, gradients_val = sess.run([actions, gradients], feed_dict={X:observations.reshape(1, num_inputs)})
+        observations, reward, done, info = env.step(action_val[0][0])
