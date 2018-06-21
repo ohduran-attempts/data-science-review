@@ -1,4 +1,4 @@
-#!env/bin/python3
+#!env/bin/python
 """Simple Neural Network.
 
 let's design a simple Neural Network that takes in the observation array,
@@ -18,7 +18,7 @@ num_inputs = 4
 num_hidden = 4
 num_outputs = 1 # Probability to go left
 
-initializer = tf.contrib.layers.variance_scaling_intializer()
+initializer = tf.contrib.layers.variance_scaling_initializer()
 
 X = tf.placeholder(tf.float32, shape=[None, num_inputs])
 
@@ -32,7 +32,7 @@ probabilities = tf.concat(axis=1, values=[output_layer, 1 - output_layer])
 
 action = tf.multinomial(probabilities, num_samples= 1)
 
-initializer = tf.global_variables_initializer()
+init = tf.global_variables_initializer()
 
 epi = 50
 step_limit = 500
@@ -43,7 +43,7 @@ with tf.Session() as sess:
     init.run()
 
     for i_episode in range(epi):
-        observation.reset()
+        observation = env.reset()
         for step in range(step_limit):
             action_value = action.eval(feed_dict={X:observation.reshape(1, num_inputs)})
 
