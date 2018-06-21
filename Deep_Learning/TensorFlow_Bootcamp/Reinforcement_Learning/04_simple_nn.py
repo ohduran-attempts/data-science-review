@@ -1,4 +1,4 @@
-#!env/bin/python
+#!env/bin/python3
 """Simple Neural Network.
 
 let's design a simple Neural Network that takes in the observation array,
