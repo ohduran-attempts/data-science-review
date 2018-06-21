@@ -20,4 +20,5 @@ for t in range(1000):
     else:
         action = 0
 
+    # feed the action to the environment and see what comes back.
     observation, reward, done, info = env.step(action)
