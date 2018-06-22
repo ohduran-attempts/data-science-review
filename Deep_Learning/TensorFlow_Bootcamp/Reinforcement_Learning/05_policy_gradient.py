@@ -104,7 +104,7 @@ env = gym.make('CartPole-v0')
 
 num_game_rounds = 10
 max_game_steps = 1000
-num_iterations = 650
+num_iterations = 100
 
 discount_rate = 0.9
 
